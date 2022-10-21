@@ -57,6 +57,9 @@ public:
   // csvstream_exception if the number of items in a row does not match the
   // header.
   csvstream & operator>> (std::vector<std::pair<std::string, std::string> >& row);
+  
+  // Edit by Anan to allow for change of headers (public copied from private)
+  void set_new_header();
 
 private:
   // Filename.  Used for error messages.
@@ -312,6 +315,11 @@ csvstream & csvstream::operator>> (std::vector<std::pair<std::string, std::strin
   return *this;
 }
 
+void csvstream::set_new_header() {
+  if (!read_csv_line(is, header, delimiter)) {
+      throw csvstream_exception("error reading header");
+    }
+}
 
 void csvstream::read_header() {
   // read first line, which is the header

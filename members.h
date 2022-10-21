@@ -96,24 +96,20 @@ class Members {
         void readZoomLogs() {
             string junk;
             csvstream csvin(zoomLogFile);
-            vector<pair<string, string>> dateRow;
-            vector<pair<string, string>> memberRow;
-
-            // while (csvin >> attendance_row) {
-            //     cout << attendance_row["animal"] << "\n";
-            // }
 
             //read first 2 lines (for the date)
-            // csvin >> dateRow;
-            // date = dateRow[2].second;
-            map<string, string> row;
-
-            // Extract the "animal" column
-            csvin >> row;
-            date = row["Start Time"];
+            map<string, string> dateRow;
+            csvin >> dateRow;
+            date = dateRow["Start Time"];
 
             //read the rest
-            
+            csvin.set_new_header(); // empty line
+            csvin.set_new_header(); // first row (new header) of attendance
+            map<string, string> attendanceRow;
+            while (csvin >> attendanceRow) {
+                //find in attendance list, add alias and time
+                date = attendanceRow["Start Time"];
+            }
         }
 
         void printSummary() {
@@ -125,7 +121,7 @@ class Members {
             cout << endl;
 
             //print the attendance
-            
+
         }
 
 };

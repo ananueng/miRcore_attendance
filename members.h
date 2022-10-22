@@ -1,26 +1,32 @@
 //IDENTIFIER  = EEC50281EEC50281EEC50281EEC50281EEC50281
 
 #include "csvstream.h"
+#include "ctype.h"
 #include <iostream>
 #include <vector>
 #include <string>
 #include <getopt.h>
+#include <algorithm>
 
 using namespace std;
 //INTERFACE
 
 //IMPLEMENTATION
-struct member {
-    vector<string> zoomAliases;
-    string name;
-    uint32_t timePresent = 0;
+
+struct zoomAlias {
+    string alias;
+    uint32_t time;
 };
 
-class nameLess {
-    public: 
-    bool operator() (member* a, member* b) const {
-        return a->name > b->name;
+struct member {
+    member() {}
+    member(const string &first, const string &last) {
+        firstName = first;
+        lastName = last;
     }
+    vector<zoomAlias> zoomAliases;
+    string firstName;
+    string lastName;
 };
 
 class Members {
@@ -32,6 +38,13 @@ class Members {
         string date;
         bool isHelp = false;
     public:
+        class firstNameLess {
+            public: 
+            bool operator() (member* a, member* b) const {
+                return a->firstName < b->firstName;
+            }
+        };
+
         //default ctor
         Members() {
             cerr << "should have an attendance list argument in the code, see implementation";
@@ -92,7 +105,57 @@ class Members {
 
         bool getHelp() {return isHelp;}
 
-        void readAttendanceList() {}
+        template<typename COMPARE = firstNameLess>
+        void readAttendanceList() {
+            string junk;
+            csvstream csvin(attendanceListFile);
+            COMPARE less;
+
+            map<string, string> row;
+            csvin >> row;
+            while (csvin >> row) {
+                if (row["Name (First Last)"] != "") {
+                    string first;
+                    string last;
+                    uint32_t i = 0;
+
+                    //read firstName until space or comma
+                    while (row["Name (First Last)"][i] != ' ' && 
+                        row["Name (First Last)"][i] != ',' && 
+                        i < row["Name (First Last)"].size()) {
+
+                        first.push_back(row["Name (First Last)"][i++]);
+                    }
+
+                    //skip the space or comma in between
+                    while ((row["Name (First Last)"][i] == ' ' || 
+                            row["Name (First Last)"][i] == ',') &&
+                            i < row["Name (First Last)"].size()) {
+
+                        i++;
+                    }
+
+                    //read lastName until space or end
+                    while (row["Name (First Last)"][i] == ' ' &&
+                           i < row["Name (First Last)"].size()) {
+
+                        last.push_back(row["Name (First Last)"][i++]);
+                    }
+
+                    //add name (all lowercase) to master list
+                    transform(first.begin(), first.end(), first.begin(), ::tolower);
+                    transform(last.begin(), last.end(), last.begin(), ::tolower);
+                    attendanceList.push_back(member(first, last));
+                }
+            }
+
+            //create sorted attendance list for faster search
+            for (auto &i:attendanceList) {
+                sortedAttendanceList.push_back(&i);
+            }
+            sort(sortedAttendanceList.begin(), sortedAttendanceList.end(), less);
+        }
+
         void readZoomLogs() {
             string junk;
             csvstream csvin(zoomLogFile);
@@ -107,8 +170,8 @@ class Members {
             csvin.set_new_header(); // first row (new header) of attendance
             map<string, string> attendanceRow;
             while (csvin >> attendanceRow) {
-                //find in attendance list, add alias and time
-                date = attendanceRow["Start Time"];
+                //bin search (lower case) in sorted attendance list, add alias and time
+                //date = attendanceRow["Start Time"];
             }
         }
 
@@ -123,6 +186,5 @@ class Members {
             //print the attendance
 
         }
-
 };
 

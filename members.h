@@ -20,6 +20,9 @@ struct zoomAlias {
 
 struct member {
     member() {}
+    member(bool x) {
+        filler = x;
+    }
     member(const string &output, const string &full, const string &first, const string &last) {
         outName = output;
         fullName = full;
@@ -43,42 +46,60 @@ class Members {
         vector<string> notMatched;
         string attendanceListFile;
         string zoomLogFile;
+        string outputFile;
         string date;
         bool isHelp = false;
+        bool outputMode = false;
         bool find(string full, string &time) {
             bool foundMatch = false;
             string fullOnlyLetters;
-            for (int j = 0; j < full.length(); j++) {
+            for (size_t j = 0; j < full.length(); j++) {
                 if ((int(full[j]) >= 'a' && int(full[j]) <= 'z') || full[j] == ' ') {
                     fullOnlyLetters.push_back(full[j]);
                 }
             }
             full = fullOnlyLetters;
             for (size_t i = 0; i < attendanceList.size(); i++) {
+                
+                member &forDEBUG = attendanceList[i];
+                if (!forDEBUG.filler) {}
+                if (time == "47") {
+                    //i - 2 = roll call row, time == zoom time
+                    time = "47";
+                }
+
                 size_t foundFirst = full.find(attendanceList[i].firstName);
                 size_t foundLast = full.find(attendanceList[i].lastName);
-                if (full == attendanceList[i].fullName || 
-                    (foundFirst != std::string::npos && foundLast != std::string::npos)) {
+                //full match
+                if ((full == attendanceList[i].fullName || 
+                    (foundFirst != std::string::npos && foundLast != std::string::npos)) &&
+                    !attendanceList[i].firstName.empty() && !attendanceList[i].lastName.empty()) {
+                    //fullmatch found
                     zoomAlias toPush = {full, time};
                     attendanceList[i].zoomAliases.push_front(toPush);
                     attendanceList[i].fullMatch = true;
                     foundMatch = true;
+                    break;
                 }
-                else {
-                    string temp;
-                    stringstream ss(full);
-                    while (getline(ss, temp, ' ')) {
-                        if (temp == attendanceList[i].lastName || 
-                            temp == attendanceList[i].firstName) {
-                        zoomAlias toPush = {full, time};
-                        attendanceList[i].zoomAliases.push_back(toPush);
-                        attendanceList[i].partialMatch = true;   
-                        foundMatch = true; 
-                        }
-                    }
-                } 
             }
-            return foundMatch;
+            if (foundMatch) {
+                return foundMatch;
+            }
+            //attempt partial match
+            for (size_t i = 0; i < attendanceList.size(); i++) {
+                string temp;
+                stringstream ss(full);
+                while (getline(ss, temp, ' ')) {
+                    if ((temp == attendanceList[i].lastName && !attendanceList[i].lastName.empty()) || 
+                        (temp == attendanceList[i].firstName && !attendanceList[i].firstName.empty())) {
+                    zoomAlias toPush = {full, time};
+                    attendanceList[i].zoomAliases.push_back(toPush);
+                    attendanceList[i].partialMatch = true;   
+                    foundMatch = true; 
+                    }
+                }
+            } 
+        return foundMatch;
         }
     public:
         class firstNameLess {
@@ -91,7 +112,6 @@ class Members {
         //default ctor
         Members() {
             cerr << "should have an attendance list argument in the code, see implementation";
-            exit(1);
         }
 
         //main ctor
@@ -111,10 +131,11 @@ class Members {
 
             struct option longOpts[] = {{ "group", required_argument, nullptr, 'g' },
                                         { "zoom", required_argument, nullptr, 'z' },
+                                        { "output", required_argument, nullptr, 'o' },
                                         { "help", no_argument, nullptr, 'h' },
                                         { nullptr, 0, nullptr, '\0' }};
             //required has : after
-            while ((option = getopt_long(argc, argv, "g:z:h", longOpts, &option_index)) != -1) {
+            while ((option = getopt_long(argc, argv, "g:z:o:h", longOpts, &option_index)) != -1) {
                 switch (option) {
                     case 'g':
                         hasAttendanceList = true;
@@ -126,14 +147,22 @@ class Members {
                         zoomLogFile = string(optarg);
                         break;
 
+                    case 'o':
+                        outputMode = true;
+                        outputFile = string(optarg);
+                        break;
+
                     case 'h':
                         isHelp = true;
                         std::cout << "This program reads .csv files:\n"
                                 << "-g specifying the file with the member names and\n"
-                                <<  "-a specifying the file with the zoom attendance log\n\n"
-                                <<  "Usage:  \'./attendance [--group | -g] <groupList file>"
-                                <<                       " [--zoom | -z] <zoomLog file>' or \n"
-                                <<        "\t\'./attendance [--help  | -h]'\n";
+                                <<  "-z specifying the file with the zoom attendance log\n"
+                                <<  "-o file specifying the .txt file to import into google sheets\n"
+                                <<  "< filename specifying the file to check for non-matched names\n"
+                                <<  "Usage:  \'./attendance [--group  | -g] <groupList file> \n"
+                                <<   "                      [--zoom   | -z] <zoomLog file>\n"
+                                <<   "                      [--output | -o] <output file> > <usercheck file>\n"
+                                <<   "                      [--help   | -h]'\n";
                         //exit(0);
                         return;
                 }//switch
@@ -182,8 +211,8 @@ class Members {
                     //add name (all lowercase) to master list
                     attendanceList.push_back(member(row["Name (First Last)"], full, first, last));
                 }
-                else { //pushback empty for formatting
-                    attendanceList.push_back(member());
+                else { //pushback filler for formatting
+                    attendanceList.push_back(member(true));
                 }
             }
 
@@ -203,6 +232,7 @@ class Members {
             map<string, string> dateRow;
             csvin >> dateRow;
             date = dateRow["Start Time"];
+            cout << "numParticipants: " << dateRow["Participants"] << endl;
 
             //read the rest
             csvin.set_new_header(); // empty line in zoomLogs
@@ -231,23 +261,46 @@ class Members {
             }
             cout << endl;
 
-            //print the attendance
-            for (size_t i = 0; i < attendanceList.size(); i++) {
-                cout << attendanceList[i].outName << ": ";
-                if (attendanceList[i].fullMatch) {
-                    //only cout the first zoomAlias, which will be the full name
-                    cout << attendanceList[i].zoomAliases.front().alias << "|" <<
-                    attendanceList[i].zoomAliases.front().time << "|,";
+            //print to outputFile
+            if (outputMode) {
+                ofstream os;
+                os.open(outputFile);
+                for (size_t n = 0; n < attendanceList.size(); n++) {
+                    if (attendanceList[n].fullMatch) {
+                        os << "TRUE" << endl;
+                    }
+                    else if (attendanceList[n].partialMatch) {
+                        os << "***" << endl;
+                    }
+                    else if (attendanceList[n].filler) {
+                        os << "---" << endl;
+                    }
+                    else {
+                        os << "FALSE" << endl;
+                    }
                 }
-                else if (attendanceList[i].partialMatch) {//partial match
-                    for (size_t j = 0; j < attendanceList[i].zoomAliases.size(); i++) {
-                    cout << attendanceList[i].zoomAliases[j].alias << "|" <<
-                    attendanceList[i].zoomAliases[j].time << "|, ";
+                os.close();
+            }
+            //print the attendance
+            for (size_t j = 0; j < attendanceList.size(); j++) {
+                if (!attendanceList[j].filler) {
+                    cout << attendanceList[j].outName << ": ";
+                }
+                if (attendanceList[j].fullMatch) {
+                    //only cout the first zoomAlias, which will be the full name
+                    cout << attendanceList[j].zoomAliases.front().alias << "|" <<
+                    attendanceList[j].zoomAliases.front().time << "|,";
+                }
+                else if (attendanceList[j].partialMatch) {//partial match
+                    cout << "***";
+                    for (size_t k = 0; k < attendanceList[j].zoomAliases.size(); k++) {
+                    cout << attendanceList[j].zoomAliases[k].alias << "|" <<
+                    attendanceList[j].zoomAliases[k].time << "|, ";
                     }
                 }
                 else {
-                    if (attendanceList[i].filler) {
-                        cout << "this is filler";
+                    if (attendanceList[j].filler) {
+                        cout << "FILLER (no person in role call here)";
                     }
                     else {
                         cout << "ABSENT";
@@ -257,9 +310,9 @@ class Members {
             }
         //print unmatched
             if (!notMatched.empty()) {
-                cout << "Names in zoomLogs that weren't matched: ";
-                for (auto &i: notMatched){
-                    cout << i << endl;
+                cout << "Names in zoomLogs that weren't matched: " << endl;
+                for (auto &x: notMatched){
+                    cout << x << endl;
                 }
             }
         }

@@ -119,7 +119,7 @@ identifier:
 	fi
 
 # Build all executables
-all: release debug profile
+all: release debug
 
 $(EXECUTABLE): $(OBJECTS)
 ifeq ($(EXECUTABLE), executable)

@@ -9,7 +9,7 @@
             "type": "cppdbg",
             "request": "launch",
             "program": "${workspaceFolder}/attendance_debug",
-            "args": ["-g", "group.csv" , "-z", "participants_93002753441.csv"],
+            "args": ["-g", "group.csv" , "-z", "zoomTest.csv", "-o", "output.txt"],
             "stopAtEntry": false,
             "cwd": "${workspaceFolder}",
             "environment": [],

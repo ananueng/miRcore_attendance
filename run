@@ -1,0 +1,22 @@
+#!/bin/bash
+
+# attendance tracker
+# Anan
+
+# Stop on errors
+# See https://vaneyckt.io/posts/safer_bash_scripts_with_set_euxo_pipefail/
+set -Eeuo pipefail
+
+usage() {
+  echo "Error: unexpected number of arguments"
+  echo "Usage: ./run group.csv <list of at least 1 participant.csv files, separated by commas, renamed to MM/DD/YY.csv where day is Saturday>"
+  echo "Example: $ ./run group.csv 10/21/23.csv"
+}
+
+if [ $# -le 1 ]; then
+  usage
+  exit 1
+fi
+
+python3 app/main.py
+

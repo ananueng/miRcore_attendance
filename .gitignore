@@ -1,5 +1,6 @@
 env/
+output/*
 
 # ignore repository with private information
-data/
+data/*
 

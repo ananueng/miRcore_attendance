@@ -1,2 +1,5 @@
+env/
+
 # ignore repository with private information
 data/
+

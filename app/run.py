@@ -31,12 +31,14 @@ def process_date_csv(file, identifiers):
     # Create a list to store the rows for this date
     date_entries = [date] + (['False'] * len(identifiers))
     misses = ['', 'Unknown names from Zoom:']
-    print(df)
+    # print(df) #debug
+    
     # Process each row in the <date>.csv file
     for _, row in df.iterrows():
         full_name = row['Name (Original Name)']
         name = full_name.split()
         is_match = False
+        
         # For each row in Group.csv, check if person can be identified in Zoom .csv log
         for i, identifier in enumerate(identifiers):
             if identifier["first_name"] == 'NaN' or date_entries[i + 1] == 'True':
@@ -69,17 +71,12 @@ def process_files():
         messagebox.showerror("Error", "Please select Group.csv, date CSV files, and an output file.")
         return
 
-    # Input and output directories
-    # TODO: input_directory = 'testData'  Folder containing <date>.csv files
-    # TODO: output_directory = 'outputs'  Folder where output files will be stored
-
     # Create the output directory if it doesn't exist
     os.makedirs(output_file_path, exist_ok=True)
 
     # Read the Group.csv file and create a dictionary of identifiers
-    # TODO: group_file = os.path.join(input_directory, 'Group.csv')
     group_data = pd.read_csv(group_file_path)
-    print(group_data) #debug
+    # print(group_data) #debug
     identifiers = []
     index = {}
 
@@ -106,11 +103,10 @@ def process_files():
             "first_is_unique": first_is_unique,
             "last_is_unique": last_is_unique}]
 
-    print(index) #debug
-    print(identifiers) #debug
+    # print(index) #debug
+    # print(identifiers) #debug
 
     # Process each <date>.csv file in the input directory
-    # TODO: date_csv_files = glob.glob(os.path.join(input_directory, 'testOct*.csv'))
     date_cols = []
     for date_csv_file in date_file_paths:
         # Process the <date>.csv file and get the cols for the output CSV
@@ -124,10 +120,7 @@ def process_files():
     output_file = os.path.join(output_file_path, "output_test.tsv")
     with open(output_file, mode='w') as f:
         writer = csv.writer(f, delimiter='\t')
-        # for row in date_rows:
-            
-        #     if (type )
-        #     f.write(row + "\n")
+        
         for row in date_rows:
             formatted_row = []
             # breakpoint()
@@ -137,13 +130,14 @@ def process_files():
                 else:
                     formatted_row.append(cell)
             writer.writerow(formatted_row)
+            
     print(f'Output CSV file created: {output_file_path}')
 
     messagebox.showinfo("Info", "Files processed successfully.")
 
 # Create the main window
 root = tk.Tk()
-root.title("CSV File Processor")
+root.title("miRcore Attendance Logger")
 
 # Create and configure Group.csv input widgets
 group_file_label = tk.Label(root, text="Select Group.csv file:")

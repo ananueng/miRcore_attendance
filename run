@@ -8,15 +8,13 @@
 set -Eeuo pipefail
 
 usage() {
-  echo "Error: unexpected number of arguments"
-  echo "Usage: ./run group.csv <list of at least 1 participant.csv files, separated by commas, renamed to MM/DD/YY.csv where day is Saturday>"
-  echo "Example: $ ./run group.csv 10/21/23.csv"
+  echo "Usage: ./run (setup | help)"
 }
 
-if [ $# -le 1 ]; then
+if [ $# -gt 2 ]; then
   usage
   exit 1
 fi
 
-python3 app/main.py
+python3 app/run.py
 

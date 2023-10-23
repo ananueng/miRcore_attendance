@@ -16,7 +16,7 @@ def browse_date_files():
     file_paths = filedialog.askopenfilenames(title="Select date CSV files", filetypes=[("CSV Files", "*.csv")])
     date_files_entry.delete(0, tk.END)  # Clear any previous entries
     for file_path in file_paths:
-        date_files_entry.insert(tk.END, file_path)
+        date_files_entry.insert(tk.END, file_path + ' ')
 
 def browse_output_directory():
     directory_path = filedialog.askdirectory(title="Select an output directory")

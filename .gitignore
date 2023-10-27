@@ -4,3 +4,6 @@ output/*
 # ignore repository with private information
 data/*
 testData/*
+
+# add an empty data folder
+!data/

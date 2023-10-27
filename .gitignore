@@ -9,5 +9,4 @@ testData/*
 !data/
 
 #
-private/*
-!private/
+putDataHere/*

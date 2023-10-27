@@ -7,3 +7,7 @@ testData/*
 
 # add an empty data folder
 !data/
+
+#
+private/*
+!private/

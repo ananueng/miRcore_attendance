@@ -5,8 +5,3 @@ output/*
 data/*
 testData/*
 
-# add an empty data folder
-!data/
-
-#
-putDataHere/*

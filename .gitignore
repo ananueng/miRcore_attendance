@@ -4,4 +4,4 @@ output/*
 # ignore repository with private information
 data/*
 testData/*
-
+debug_output/*

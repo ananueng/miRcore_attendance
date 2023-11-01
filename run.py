@@ -27,15 +27,15 @@ def browse_output_directory():
     output_directory_entry.delete(0, tk.END)  # Clear any previous entry
     output_directory_entry.insert(tk.END, directory_path)
 
-def toggle_debug():
-    if debug_mode_entry.get():
+def toggle_dev():
+    if dev_mode_entry.get():
         # Set default values for the browse fields
         group_file_entry.delete(0, tk.END)
         group_file_entry.insert(tk.END, "data/Group.csv")
         date_files_entry.delete(0, tk.END)
         date_files_entry.insert(tk.END, "data/Oct14.csv")
         output_directory_entry.delete(0, tk.END)
-        output_directory_entry.insert(tk.END, "debug_output")
+        output_directory_entry.insert(tk.END, "dev_output")
         
 def matches(name_queries, zoom_name):
     """Find if any element in word in string A is in list B, ignoring parentheses"""
@@ -43,7 +43,7 @@ def matches(name_queries, zoom_name):
         for temp in name_queries.replace('(', ' ').replace(')', ' ').lower().split())
     
 # Function to process a single <date>.csv file and extract names
-def process_date_csv(file, identifiers, is_debug_mode, include_gls):
+def process_date_csv(file, identifiers, is_dev_mode, include_gls):
     '''Return list of true, false, or possible hits for each person in Group.csv and missed names at the end.'''
     df = pd.read_csv(file, header=2)  # Skip the first 3 rows
     date = os.path.splitext(os.path.basename(file))[0]
@@ -73,7 +73,7 @@ def process_date_csv(file, identifiers, is_debug_mode, include_gls):
                 (identifier["last_is_unique"] and last_matches) or \
                     (first_matches and last_matches):
                         date_entries[i + 1] = 'True'
-                        if is_debug_mode:
+                        if is_dev_mode:
                             date_entries[i + 1] += f': {zoom_name}'
                         is_match = True
         if not is_match: 
@@ -88,7 +88,7 @@ def process_date_csv(file, identifiers, is_debug_mode, include_gls):
                     is_match = True
                     if date_entries[i + 1] == 'False':
                         date_entries[i + 1] = f'Partial: {zoom_name}'
-                    elif is_debug_mode:
+                    elif is_dev_mode:
                         date_entries[i + 1] += f', Partial: {zoom_name}'
                     else:
                         date_entries[i + 1] += ", " + zoom_name   
@@ -99,13 +99,13 @@ def process_date_csv(file, identifiers, is_debug_mode, include_gls):
     return date_entries
 
 def process_files():
-    is_debug_mode = debug_mode_entry.get()
+    is_dev_mode = dev_mode_entry.get()
     group_file_path = group_file_entry.get()
     date_file_paths = date_files_entry.get().split()
     output_file_path = output_directory_entry.get()
     output_filename = output_filename_entry.get()
-    if is_debug_mode:
-        output_filename = "debug_output.tsv"
+    if is_dev_mode:
+        output_filename = "dev_output.tsv"
     include_gls = include_gls_entry.get()
 
     if not group_file_path or not date_file_paths or not output_file_path:
@@ -157,7 +157,7 @@ def process_files():
     date_cols = []
     for date_csv_file in date_file_paths:
         # Process the <date>.csv file and get the cols for the output CSV
-        date_cols.append(process_date_csv(date_csv_file, identifiers, is_debug_mode, include_gls))
+        date_cols.append(process_date_csv(date_csv_file, identifiers, is_dev_mode, include_gls))
 
     # Transpose cols to use writerows
     print(date_cols)
@@ -210,27 +210,27 @@ browse_output_directory_button = tk.Button(root, text="Browse", command=browse_o
 browse_output_directory_button.pack()
 
 # Create a label to describe the text entry
-label = tk.Label(root, text="Enter a filename:")
+label = tk.Label(root, text="Enter filename for output:")
 label.pack()
 output_filename_entry = tk.Entry(root)
 output_filename_entry.insert(0, "output.tsv")  # Set the default value
 output_filename_entry.pack()
 
-# Create a BooleanVar to control the debug mode
-debug_mode_entry = tk.BooleanVar()
-debug_mode_entry.set(False)  # Set the initial state to False
-
-# Create a checkbox for the debug mode
-debug_checkbox = tk.Checkbutton(root, text="Debug Mode", variable=debug_mode_entry, command=toggle_debug)
-debug_checkbox.pack()
-
-# Create a BooleanVar to control the debug mode
+# Create a BooleanVar to control the include_gl mode
 include_gls_entry = tk.BooleanVar()
 include_gls_entry.set(False)  # Set the initial state to False
 
-# Create a checkbox for the debug mode
+# Create a checkbox for the include_gl mode
 gl_checkbox = tk.Checkbutton(root, text="Include GLs", variable=include_gls_entry)
 gl_checkbox.pack()
+
+# Create a BooleanVar to control the dev mode
+dev_mode_entry = tk.BooleanVar()
+dev_mode_entry.set(False)  # Set the initial state to False
+
+# Create a checkbox for the dev mode
+dev_checkbox = tk.Checkbutton(root, text="Developer Mode", variable=dev_mode_entry, command=toggle_dev)
+dev_checkbox.pack()
 
 # Create and configure process button
 process_button = tk.Button(root, text="Process Files", command=process_files)

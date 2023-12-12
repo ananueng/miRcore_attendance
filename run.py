@@ -8,7 +8,7 @@ import pandas as pd
 # import glob
 
 def is_gl(zoom_name):
-    gl_list = ["Anan", "Vishal", "Avani", "Inhan", "Prasanna", "UM", "GIDAS", "GL", "Nihal", "Dakarapu"]
+    gl_list = ["UM", "GIDAS", "GL"]
     return (any(gl_id in zoom_name.split() for gl_id in gl_list))
 
 def browse_group_file():
@@ -36,6 +36,8 @@ def toggle_dev():
         date_files_entry.insert(tk.END, "data/Oct14.csv")
         output_directory_entry.delete(0, tk.END)
         output_directory_entry.insert(tk.END, "dev_output")
+        output_filename_entry.delete(0, tk.END)
+        output_filename_entry.insert(tk.END, "dev_output.tsv")
         
 def matches(name_queries, zoom_name):
     """Find if any element in word in string A is in list B, ignoring parentheses"""
@@ -43,10 +45,15 @@ def matches(name_queries, zoom_name):
         for temp in name_queries.replace('(', ' ').replace(')', ' ').lower().split())
     
 # Function to process a single <date>.csv file and extract names
-def process_date_csv(file, identifiers, is_dev_mode, include_gls):
+def process_date_csv(file, identifiers, is_dev_mode, include_gls, min_time):
     '''Return list of true, false, or possible hits for each person in Group.csv and missed names at the end.'''
+    # get date of this file
+    # date = os.path.splitext(os.path.basename(file))[0]
+    date_df = pd.read_csv(file)
+    date = pd.to_datetime(date_df['Start Time'][0]).strftime('%m/%d/%Y')
+    
     df = pd.read_csv(file, header=2)  # Skip the first 3 rows
-    date = os.path.splitext(os.path.basename(file))[0]
+    
     # Create a list to store the rows for this date
     date_entries = [date] + (['False'] * len(identifiers))
     misses = ['', 'Unmatched Zoom names:']
@@ -55,6 +62,7 @@ def process_date_csv(file, identifiers, is_dev_mode, include_gls):
     # Process each row in the <date>.csv file
     for _, row in df.iterrows():
         zoom_name = row['Name (Original Name)']
+        duration = row['Total Duration (Minutes)']
         is_match = False
         
         # For each row in Group.csv, check if person can be identified in Zoom .csv log
@@ -72,13 +80,18 @@ def process_date_csv(file, identifiers, is_dev_mode, include_gls):
             if (identifier["first_is_unique"] and first_matches) or \
                 (identifier["last_is_unique"] and last_matches) or \
                     (first_matches and last_matches):
+                        if min_time is not None and duration < min_time:
+                            continue
+                            # skip full match if they are not in the meeting long enough
                         date_entries[i + 1] = 'True'
                         if is_dev_mode:
-                            date_entries[i + 1] += f': {zoom_name}'
+                            date_entries[i + 1] += f': {zoom_name} ({duration})'
                         is_match = True
         if not is_match: 
+            # check for partial matches
             for i, identifier in enumerate(identifiers):
-                if not include_gls and is_gl(zoom_name): 
+                if (not include_gls and is_gl(zoom_name)) or date_entries[i + 1] == 'True': 
+                    # don't check for partial matches for this person in Group.csv
                     break
                 # split first/last name and check if they exist in this row of the Zoom log
                 first_matches = matches(identifier["first_name"], zoom_name)
@@ -87,11 +100,14 @@ def process_date_csv(file, identifiers, is_dev_mode, include_gls):
                 if first_matches or last_matches:
                     is_match = True
                     if date_entries[i + 1] == 'False':
-                        date_entries[i + 1] = f'Partial: {zoom_name}'
+                        # replace default 'False' with partial match, don't overwrite true
+                        date_entries[i + 1] = f'Partial: {zoom_name} ({duration})'
                     elif is_dev_mode:
-                        date_entries[i + 1] += f', Partial: {zoom_name}'
+                        # specify it is a partial match
+                        date_entries[i + 1] += f', Partial: {zoom_name} ({duration})'
                     else:
-                        date_entries[i + 1] += ", " + zoom_name   
+                        # append to save space
+                        date_entries[i + 1] += f', {zoom_name} ({duration})'
         if not is_match:
             misses += [f'{zoom_name}']
 
@@ -104,8 +120,12 @@ def process_files():
     date_file_paths = date_files_entry.get().split()
     output_file_path = output_directory_entry.get()
     output_filename = output_filename_entry.get()
-    if is_dev_mode:
-        output_filename = "dev_output.tsv"
+    minimum_time = minimum_time_entry.get()
+    try:
+        minimum_time = int(minimum_time)
+    except ValueError:
+        messagebox.showerror("Error", "Please enter a valid number for the minimum time")
+        return
     include_gls = include_gls_entry.get()
 
     if not group_file_path or not date_file_paths or not output_file_path:
@@ -157,10 +177,12 @@ def process_files():
     date_cols = []
     for date_csv_file in date_file_paths:
         # Process the <date>.csv file and get the cols for the output CSV
-        date_cols.append(process_date_csv(date_csv_file, identifiers, is_dev_mode, include_gls))
+        date_cols.append(process_date_csv(date_csv_file, identifiers, is_dev_mode, include_gls, minimum_time))
 
     # Transpose cols to use writerows
     print(date_cols)
+    # sort by first element 
+    date_cols = sorted(date_cols, key=lambda x: x[0])
     date_rows = list(zip_longest(*date_cols, fillvalue=''))
 
     # Write the output CSV file to the output directory    
@@ -215,6 +237,13 @@ label.pack()
 output_filename_entry = tk.Entry(root)
 output_filename_entry.insert(0, "output.tsv")  # Set the default value
 output_filename_entry.pack()
+
+# Create a label and entry for the minimum_time
+minimum_time_label = tk.Label(root, text="Minimum time (minutes) in Zoom to be marked as full match:")
+minimum_time_label.pack()
+minimum_time_entry = tk.Entry(root)
+minimum_time_entry.pack()
+minimum_time_entry.insert(0, "0")  # Set the default value
 
 # Create a BooleanVar to control the include_gl mode
 include_gls_entry = tk.BooleanVar()

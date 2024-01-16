@@ -153,11 +153,11 @@ def process_files():
             index[last_name] += 1
         else:
             index[last_name] = 1
-        for leader_name in leader_full_name.split():
-            if leader_name in index:
-                index[leader_name] += 1
+        for split_leader_name in leader_full_name.split():
+            if split_leader_name in index:
+                index[split_leader_name] += 1
             else:
-                index[leader_name] = 1
+                index[split_leader_name] = 1
 
     for _, group_row in group_data.iterrows():
         first_name = str(group_row['First Name']).rstrip()
